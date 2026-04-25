@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Import Cards</title>
+</head>
+<body>
+  <h1>Import Cards</h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Import</button>
+  </form>
+  <p>Kerakli ustunlar: <code>card_number</code>, <code>expire</code>, <code>phone</code>, <code>balance</code>. <code>status</code> bo'lmasa avtomatik <code>active</code>.</p>
+</body>
+</html>

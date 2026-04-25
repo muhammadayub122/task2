@@ -1,0 +1,57 @@
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+    initial = True
+
+    dependencies = []
+
+    operations = [
+        migrations.CreateModel(
+            name="Card",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("card_number", models.CharField(max_length=16, unique=True)),
+                ("expire", models.DateField(db_column="expire_date")),
+                ("phone", models.CharField(blank=True, max_length=13, null=True)),
+                ("status", models.CharField(choices=[("active", "Active"), ("inactive", "Inactive"), ("expired", "Expired")], max_length=10)),
+                ("balance", models.DecimalField(decimal_places=2, max_digits=14)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+            ],
+            options={"ordering": ["card_number"]},
+        ),
+        migrations.CreateModel(
+            name="Error",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("code", models.IntegerField(unique=True)),
+                ("en", models.CharField(max_length=255)),
+                ("ru", models.CharField(max_length=255)),
+                ("uz", models.CharField(max_length=255)),
+            ],
+            options={"db_table": "apps_errors", "ordering": ["code"]},
+        ),
+        migrations.CreateModel(
+            name="Transfer",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("ext_id", models.CharField(max_length=64, unique=True)),
+                ("sender_card_number", models.CharField(max_length=16)),
+                ("receiver_card_number", models.CharField(db_column="eceiver_card_number", max_length=16)),
+                ("sender_card_expiry", models.CharField(max_length=5)),
+                ("sender_phone", models.CharField(blank=True, max_length=13, null=True)),
+                ("receiver_phone", models.CharField(blank=True, max_length=13, null=True)),
+                ("sending_amount", models.DecimalField(decimal_places=2, max_digits=14)),
+                ("currency", models.IntegerField()),
+                ("receiving_amount", models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
+                ("state", models.CharField(choices=[("created", "Created"), ("confirmed", "Confirmed"), ("cancelled", "Cancelled")], default="created", max_length=10)),
+                ("try_count", models.PositiveSmallIntegerField(default=0)),
+                ("otp", models.CharField(blank=True, max_length=6, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("confirmed_at", models.DateTimeField(blank=True, null=True)),
+                ("cancelled_at", models.DateTimeField(blank=True, null=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+            ],
+            options={"ordering": ["-created_at"]},
+        ),
+    ]

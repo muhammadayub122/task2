@@ -1,0 +1,11 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h1>Export cards</h1>
+  <p>{{ cards_count }} ta karta hozirgi filter bo'yicha export qilinadi.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Export">
+  </form>
+{% endblock %}
