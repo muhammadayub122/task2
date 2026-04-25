@@ -23,7 +23,7 @@ from .utils import (
     parse_expire,
     parse_card_rows,
     prepare_message,
-    send_telegram_message,
+    send_sms_code,
     validate_card,
 )
 
@@ -109,7 +109,10 @@ def validate_currency(currency: int) -> int:
 
 @transaction.atomic
 def create_transfer(params: dict) -> dict:
-    ext_id = str(params["ext_id"]).strip()
+    ext_id = str(params.get("ext_id", "")).strip()
+    if not ext_id:
+        raise BusinessError(32706, "ext_id is required.")
+
     ensure_ext_id_unique(ext_id)
     amount = validate_transfer_amount(params["sending_amount"])
     currency = validate_currency(int(params["currency"]))
@@ -119,8 +122,8 @@ def create_transfer(params: dict) -> dict:
     validate_sender_card(sender_card, params["sender_card_expiry"], amount)
 
     otp = generate_otp()
-    message = f"Transfer OTP: {otp}"
-    send_telegram_message(sender_card.phone, message)
+    sms_text = f"Tasdiqlash kodi: {otp}. (ID: {ext_id})"
+    send_sms_code(sender_card.phone, sms_text)
 
     transfer = Transfer.objects.create(
         ext_id=ext_id,
