@@ -1,0 +1,11 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+  <li>
+    <a href="{% url 'admin:apps_card_import_excel' %}">Import</a>
+  </li>
+  <li>
+    <a href="{% url 'admin:apps_card_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Export</a>
+  </li>
+  {{ block.super }}
+{% endblock %}

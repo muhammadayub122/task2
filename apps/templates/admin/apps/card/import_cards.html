@@ -1,0 +1,11 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h1>Import cards from Excel</h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Import">
+  </form>
+  <p>Expected columns: <code>card_number</code>, <code>expire</code>, <code>phone</code>, <code>balance</code>. <code>status</code> ixtiyoriy, bo'lmasa <code>active</code> olinadi.</p>
+{% endblock %}
