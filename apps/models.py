@@ -85,7 +85,7 @@ class Error(models.Model):
 class Transfer(models.Model):
     ext_id = models.CharField(max_length=64, unique=True)
     sender_card_number = models.CharField(max_length=16)
-    receiver_card_number = models.CharField(max_length=16, db_column="eceiver_card_number")
+    receiver_card_number = models.CharField(max_length=16, db_column="receiver_card_number")
     sender_card_expiry = models.CharField(max_length=5)
     sender_phone = models.CharField(max_length=13, blank=True, null=True)
     receiver_phone = models.CharField(max_length=13, blank=True, null=True)

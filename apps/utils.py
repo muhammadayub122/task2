@@ -199,6 +199,15 @@ def send_message(message: str, chat_id: int = 12345) -> dict[str, Any]:
     return {"chat_id": chat_id, "message": message, "sent": True}
 
 
+def send_sms_code(phone: str, message: str) -> None:
+    """
+    Telefon raqamiga tasdiqlash kodini SMS orqali yuborish (Simulatsiya).
+    Haqiqiy loyihada bu yerda SMS provayder (masalan, Eskiz yoki Twilio) API'si chaqiriladi.
+    """
+    formatted_phone = format_phone(phone)
+    logger.info("SMS yuborildi: Phone: %s, Message: %s", formatted_phone, message)
+
+
 def generate_otp(length: int = 6) -> str:
     return "".join(str(random.randint(0, 9)) for _ in range(length))
 
@@ -448,13 +457,20 @@ def build_cards_xlsx_bytes(queryset, value_style: str = "formatted") -> bytes:
 
     sheet_lines = [
         """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>""",
-        """<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>""",
+        """<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">""",
     ]
+    if rows:
+        num_rows = len(rows)
+        num_cols = len(rows[0])
+        last_col = chr(64 + num_cols) if num_cols <= 26 else "Z"
+        sheet_lines.append(f'<dimension ref="A1:{last_col}{num_rows}"/>')
+
+    sheet_lines.append("<sheetData>")
     shared_index = 0
     for row_index, row in enumerate(rows, start=1):
         sheet_lines.append(f'<row r="{row_index}">')
         for col_index, _ in enumerate(row):
-            cell_ref = f"{chr(65 + col_index)}{row_index}"
+            cell_ref = f"{chr(65 + col_index)}{row_index}" if col_index < 26 else f"Z{row_index}"
             sheet_lines.append(f'<c r="{cell_ref}" t="s"><v>{shared_index}</v></c>')
             shared_index += 1
         sheet_lines.append("</row>")
