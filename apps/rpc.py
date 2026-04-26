@@ -13,6 +13,7 @@ from .services import (
     jsonrpc_error,
     jsonrpc_success,
     log_rpc_call,
+    send_otp_to_chat,
     transfer_history,
     transfer_state,
 )
@@ -36,9 +37,11 @@ except ImportError:
 
 @method(name="transfer.create")
 def rpc_transfer_create(params: dict) -> dict:
-    logger.info("RPC Method called: transfer.create")
+    logger.info(f"transfer.create params: {params}")
+    # Let exceptions propagate to the jsonrpc_endpoint's error handling.
+    # The jsonrpc_endpoint already handles BusinessError and other Exceptions
+    # and formats them into the JSON-RPC error response.
     return create_transfer(params)
-
 
 @method(name="transfer.confirm")
 def rpc_transfer_confirm(params: dict) -> dict:
@@ -64,12 +67,19 @@ def rpc_transfer_history(params: dict) -> list[dict]:
     return transfer_history(params)
 
 
+@method(name="otp.send")
+def rpc_otp_send(params: dict) -> dict:
+    logger.info("RPC Method called: otp.send")
+    return send_otp_to_chat(params)
+
+
 METHODS = {
     "transfer.create": rpc_transfer_create,
     "transfer.confirm": rpc_transfer_confirm,
     "transfer.cancel": rpc_transfer_cancel,
     "transfer.state": rpc_transfer_state,
     "transfer.history": rpc_transfer_history,
+    "otp.send": rpc_otp_send,
 }
 
 
