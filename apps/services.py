@@ -24,6 +24,7 @@ from .utils import (
     parse_card_rows,
     prepare_message,
     send_telegram_message,
+    send_sms_code,
     validate_card,
 )
 
@@ -109,7 +110,10 @@ def validate_currency(currency: int) -> int:
 
 @transaction.atomic
 def create_transfer(params: dict) -> dict:
-    ext_id = str(params["ext_id"]).strip()
+    ext_id = str(params.get("ext_id", "")).strip()
+    if not ext_id:
+        raise BusinessError(32706, "ext_id is required.")
+
     ensure_ext_id_unique(ext_id)
     amount = validate_transfer_amount(params["sending_amount"])
     currency = validate_currency(int(params["currency"]))
