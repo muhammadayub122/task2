@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from apps.models import Errors
+from apps.models import Error
 
 
 ERRORS = [
@@ -39,9 +39,9 @@ ERRORS = [
     (32711, "Count of try is reached",
             "Превышено количество попыток",
             "Urinishlar soni tugadi"),
-    (32712, "OTP is wrong, left try count is 2",
-            "Неверный OTP, осталось 2 попытки",
-            "Noto'g'ri OTP, yana 2 urinish qoldi"),
+    (32712, "Incorrect OTP. Attempts left: 2",
+            "Неверный OTP. Осталось попыток: 2",
+            "Noto'g'ri OTP. Urinishlar qoldi: 2"),
     (32713, "Method is not allowed",
             "Метод не разрешён",
             "Usulga ruxsat berilmagan"),
@@ -59,7 +59,7 @@ class Command(BaseCommand):
         skipped_count = 0
 
         for code, en, ru, uz in ERRORS:
-            obj, created = Errors.objects.get_or_create(
+            obj, created = Error.objects.get_or_create(
                 code=code,
                 defaults={"en": en, "ru": ru, "uz": uz},
             )

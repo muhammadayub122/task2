@@ -23,6 +23,7 @@ from .utils import (
     parse_expire,
     parse_card_rows,
     prepare_message,
+    send_telegram_message,
     send_sms_code,
     validate_card,
 )
@@ -56,7 +57,7 @@ def get_error_message(code: int, lang: str = "en") -> str:
         32709: "Amount is small",
         32710: "OTP expired",
         32711: "Count of try is reached",
-        32712: "OTP is wrong, left try count is 2",
+        32712: "Incorrect OTP. Attempts left: 2",
         32713: "Method is not allowed",
         32714: "Method not found",
     }
@@ -102,7 +103,7 @@ def validate_sender_card(card: Card, sender_card_expiry: str, sending_amount: De
 
 
 def validate_currency(currency: int) -> int:
-    if currency not in (643, 840):
+    if currency not in (860, 643, 840):
         raise BusinessError(32707, get_error_message(32707))
     return currency
 
@@ -119,11 +120,14 @@ def create_transfer(params: dict) -> dict:
 
     sender_card = get_card_or_raise(params["sender_card_number"])
     receiver_card = get_card_or_raise(params["receiver_card_number"])
+    
     validate_sender_card(sender_card, params["sender_card_expiry"], amount)
+    logger.info("Validation successful for transfer %s", ext_id)
 
     otp = generate_otp()
-    sms_text = f"Tasdiqlash kodi: {otp}. (ID: {ext_id})"
-    send_sms_code(sender_card.phone, sms_text)
+    message = f"Transfer OTP: {otp}"
+    chat_id = params.get("chat_id", 123456)
+    send_telegram_message(sender_card.phone, message, chat_id=chat_id)
 
     transfer = Transfer.objects.create(
         ext_id=ext_id,
@@ -147,13 +151,18 @@ def confirm_transfer(params: dict) -> dict:
     try:
         transfer = get_transfer_by_ext_id(str(params["ext_id"]).strip())
     except Transfer.DoesNotExist as exc:
-        raise BusinessError(32706, get_error_message(32706)) from exc
+        raise BusinessError(32706, "Transfer not found.") from exc
+
     if transfer.state != TransferState.CREATED:
+        logger.warning("Attempt to confirm transfer %s in state %s", transfer.ext_id, transfer.state)
         return {"ext_id": transfer.ext_id, "state": transfer.state}
+
     if transfer.try_count >= MAX_OTP_TRIES:
         raise BusinessError(32711, get_error_message(32711))
+
     if transfer.created_at + timedelta(minutes=OTP_LIFETIME_MINUTES) < timezone.now():
         raise BusinessError(32710, get_error_message(32710))
+
     otp = str(params["otp"]).strip()
     if transfer.otp != otp:
         transfer.try_count += 1
@@ -161,7 +170,7 @@ def confirm_transfer(params: dict) -> dict:
         left = MAX_OTP_TRIES - transfer.try_count
         if left <= 0:
             raise BusinessError(32711, get_error_message(32711))
-        raise BusinessError(32712, f"Incorrect OTP. Attempts left: {left}")
+        raise BusinessError(32712, get_error_message(32712, lang="en").replace("2", str(left)))
 
     sender_card = Card.objects.select_for_update().get(card_number=transfer.sender_card_number)
     receiver_card = Card.objects.select_for_update().get(card_number=transfer.receiver_card_number)
@@ -194,7 +203,7 @@ def cancel_transfer(params: dict) -> dict:
         transfer.cancelled_at = timezone.now()
         transfer.save(update_fields=["state", "cancelled_at", "updated_at"])
         logger.info("Transfer cancelled: %s", transfer.ext_id)
-    return {"ext_id": transfer.ext_id, "state": transfer.state}
+    return {"state": transfer.state}
 
 
 def transfer_state(params: dict) -> dict:
