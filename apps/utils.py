@@ -150,6 +150,7 @@ def parse_expire(raw_expire: Any) -> date:
     patterns = [
         r"^(?P<year>\d{4})[-/.](?P<month>\d{1,2})$",
         r"^(?P<month>\d{1,2})[-/.](?P<year>\d{2,4})$",
+        r"^(?P<year>\d{4})[-/.](?P<month>\d{1,2})[-/.](?P<day>\d{1,2})$",
     ]
     for pattern in patterns:
         match = re.match(pattern, value)

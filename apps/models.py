@@ -126,6 +126,7 @@ class Transfer(models.Model):
     state = models.CharField(max_length=10, choices=TransferState.choices, default=TransferState.CREATED)
     try_count = models.PositiveSmallIntegerField(default=0)
     otp = models.CharField(max_length=6, blank=True, null=True)
+    chat_id = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     confirmed_at = models.DateTimeField(blank=True, null=True)
     cancelled_at = models.DateTimeField(blank=True, null=True)
