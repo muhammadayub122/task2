@@ -36,26 +36,31 @@ except ImportError:
 
 @method(name="transfer.create")
 def rpc_transfer_create(params: dict) -> dict:
+    logger.info("RPC Method called: transfer.create")
     return create_transfer(params)
 
 
 @method(name="transfer.confirm")
 def rpc_transfer_confirm(params: dict) -> dict:
+    logger.info("RPC Method called: transfer.confirm")
     return confirm_transfer(params)
 
 
 @method(name="transfer.cancel")
 def rpc_transfer_cancel(params: dict) -> dict:
+    logger.info("RPC Method called: transfer.cancel")
     return cancel_transfer(params)
 
 
 @method(name="transfer.state")
 def rpc_transfer_state(params: dict) -> dict:
+    logger.info("RPC Method called: transfer.state")
     return transfer_state(params)
 
 
 @method(name="transfer.history")
 def rpc_transfer_history(params: dict) -> list[dict]:
+    logger.info("RPC Method called: transfer.history")
     return transfer_history(params)
 
 

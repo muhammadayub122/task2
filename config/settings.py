@@ -1,20 +1,55 @@
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR / '.env', override=True, encoding='utf-8-sig')
+
+
+def _read_env_token(*names: str) -> str:
+    raw = ''
+    for n in names:
+        raw = (os.environ.get(n) or '').strip()
+        if raw:
+            break
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "'\"":
+        raw = raw[1:-1].strip()
+    return raw
+
+
+# Telegram (never commit real tokens; use environment variables)
+TELEGRAM_BOT_TOKEN = _read_env_token('TELEGRAM_BOT_TOKEN', 'BOT_TOKEN')
+# Optional: receive bulk notifications when a card has no telegram_chat_id
+TELEGRAM_DEFAULT_CHAT_ID = None
+_tg_default = os.environ.get('TELEGRAM_DEFAULT_CHAT_ID', '').strip()
+if _tg_default:
+    try:
+        TELEGRAM_DEFAULT_CHAT_ID = int(_tg_default)
+    except ValueError:
+        TELEGRAM_DEFAULT_CHAT_ID = None
+
 
 # Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-_8j*xwd*6n45pe&ve$%r%qyl&&y)7#6=+n#rt&@2w0a8h@97$!'
+SECRET_KEY = 'django-insecure-&nr4b1ihkw@it-5dt)0p+=9e)9o4%am28y_o0!kl^5*wcvega_'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Удобная разработка: любой Host (LAN, 127.0.0.1, имя ПК). В проде задайте DJANGO_ALLOWED_HOSTS.
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = [
+        h.strip()
+        for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',')
+        if h.strip()
+    ]
 
 
 # Application definition

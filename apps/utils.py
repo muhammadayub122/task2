@@ -4,6 +4,8 @@ import json
 import logging
 import random
 import re
+import urllib.request
+import urllib.error
 import zipfile
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
@@ -11,6 +13,7 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
+from django.conf import settings
 from django.db.models import QuerySet
 
 from .models import Transfer
@@ -204,13 +207,31 @@ def generate_otp(length: int = 6) -> str:
 
 
 def send_telegram_message(phone: str, message: str, chat_id: int = 123456) -> dict[str, Any]:
+    # Avoid real network calls during tests
+    import sys
+    is_testing = 'test' in sys.argv or getattr(settings, 'TESTING', False)
+    
+    token = None if is_testing else getattr(settings, "TELEGRAM_BOT_TOKEN", None)
+    
     payload = {
         "phone": format_phone(phone),
         "chat_id": chat_id,
         "message": message,
         "provider": "telegram-simulation",
     }
-    logger.info("Simulated telegram send: %s", json.dumps(payload, ensure_ascii=False))
+
+    if token:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        data = json.dumps({"chat_id": chat_id, "text": message}).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req) as response:
+                payload["sent"] = True
+                payload["provider"] = "telegram-api"
+        except Exception as e:
+            logger.error("Failed to send real telegram message: %s", e)
+
+    logger.info("Telegram send attempt: %s", json.dumps(payload, ensure_ascii=False))
     return payload
 
 
