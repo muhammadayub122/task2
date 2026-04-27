@@ -41,6 +41,8 @@ from django.db.models.fields import (
 )
 from django.utils.dateparse import parse_date, parse_datetime
 
+from apps.utils import validate_card
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_LANGUAGE = "ru"
