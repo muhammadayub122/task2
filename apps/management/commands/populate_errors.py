@@ -15,13 +15,13 @@ ERRORS = [
     (32709, "Amount is small", "Сумма слишком мала", "Miqdor juda kichik"),
     (32710, "OTP expired", "OTP истек", "OTP muddati tugagan"),
     (32711, "Count of try is reached", "Превышено количество попыток", "Urinishlar soni tugadi"),
-    (32712, "OTP is wrong, left try count is 2", "Неверный OTP, осталось 2 попытки", "Noto'g'ri OTP, yana 2 urinish qoldi"),
+    (32712, "Incorrect OTP. Attempts left: 2", "Неверный OTP. Осталось попыток: 2", "Noto'g'ri OTP. Urinishlar qoldi: 2"),
     (32713, "Method is not allowed", "Метод не разрешён", "Usulga ruxsat berilmagan"),
     (32714, "Method not found", "Метод не найден", "Usul topilmadi"),
 ]
 
 
-class Command(BaseCommand):
+class PopulateCommand(BaseCommand):
     help = "Populate the Error table with predefined JSON-RPC error codes."
 
     def handle(self, *args, **options):
@@ -41,3 +41,6 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"Done. Created: {created_count}, Skipped: {skipped_count}")
         )
+
+class Command(PopulateCommand):
+    pass

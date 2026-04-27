@@ -24,6 +24,7 @@ from .utils import (
     parse_card_rows,
     prepare_message,
     send_sms_code,
+    send_telegram_message,
     validate_card,
 )
 
@@ -31,6 +32,31 @@ logger = logging.getLogger(__name__)
 
 OTP_LIFETIME_MINUTES = 5
 MAX_OTP_TRIES = 3
+
+from django.core.cache import cache
+
+OTP_CACHE_TIMEOUT = 300  # 5 minutes
+
+
+def send_otp_to_chat(params: dict) -> dict:
+    chat_id = str(params.get("chat_id", "")).strip()
+    if not chat_id:
+        raise BusinessError(32706, "chat_id is required.")
+    otp = generate_otp()
+    cache_key = f"otp_{chat_id}"
+    cache.set(cache_key, otp, timeout=OTP_CACHE_TIMEOUT)
+    message = f"Your verification code: {otp}"
+    result = send_telegram_message("", message, chat_id=int(chat_id))
+    if not result.get("sent"):
+        logger.error("Failed to send OTP telegram to chat_id %s. Check TELEGRAM_BOT_TOKEN.", chat_id)
+        return {
+            "sent": False,
+            "chat_id": chat_id,
+            "otp": otp,
+            "warning": "Telegram message failed. Check TELEGRAM_BOT_TOKEN and chat_id.",
+        }
+    logger.info("OTP sent to chat_id %s: %s", chat_id, otp)
+    return {"sent": True, "chat_id": chat_id, "otp": otp}
 
 
 @dataclass
@@ -100,9 +126,8 @@ def validate_sender_card(card: Card, sender_card_expiry: str, sending_amount: De
     if card.balance < sending_amount:
         raise BusinessError(32702, get_error_message(32702))
 
-
 def validate_currency(currency: int) -> int:
-    if currency not in (643, 840):
+    if currency not in (860, 643, 840):
         raise BusinessError(32707, get_error_message(32707))
     return currency
 
@@ -114,22 +139,97 @@ def create_transfer(params: dict) -> dict:
         raise BusinessError(32706, "ext_id is required.")
 
     ensure_ext_id_unique(ext_id)
-    amount = validate_transfer_amount(params["sending_amount"])
-    currency = validate_currency(int(params["currency"]))
 
-    sender_card = get_card_or_raise(params["sender_card_number"])
-    receiver_card = get_card_or_raise(params["receiver_card_number"])
-    validate_sender_card(sender_card, params["sender_card_expiry"], amount)
+    # Support both internal and legacy RPC parameter names
+    sending_amount_raw = params.get("amount") or params.get("sending_amount")
+    if sending_amount_raw is None:
+        raise BusinessError(32706, "Parameter 'amount' is required.")
+    amount = validate_transfer_amount(sending_amount_raw)
+
+    currency_raw = params.get("currency")
+    if currency_raw is None:
+        raise BusinessError(32706, "Parameter 'currency' is required.")
+    currency = validate_currency(int(currency_raw))
+
+    sender_card_number_raw = params.get("from_card") or params.get("sender_card_number")
+    if sender_card_number_raw is None:
+        raise BusinessError(32706, "Parameter 'from_card' (sender card number) is required.")
+    sender_card = get_card_or_raise(sender_card_number_raw)
+
+    receiver_card_number_raw = params.get("to_card") or params.get("receiver_card_number")
+    if receiver_card_number_raw is None:
+        raise BusinessError(32706, "Parameter 'to_card' (receiver card number) is required.")
+    receiver_card = get_card_or_raise(receiver_card_number_raw)
+
+    sender_card_expiry_raw = params.get("sender_card_expiry")
+    if sender_card_expiry_raw is None:
+        raise BusinessError(32706, "Parameter 'sender_card_expiry' is required.")
+    validate_sender_card(sender_card, sender_card_expiry_raw, amount)
+
+    chat_id = params.get("chat_id")
+    if chat_id is not None:
+        chat_id = str(chat_id).strip()
+
+    user_otp = params.get("user_otp")
+    auto_confirm = False
+    if user_otp is not None and chat_id:
+        user_otp = str(user_otp).strip()
+        stored = cache.get(f"otp_{chat_id}")
+        if stored and stored == user_otp:
+            auto_confirm = True
+        else:
+            raise BusinessError(32712, "Incorrect OTP.")
 
     otp = generate_otp()
     sms_text = f"Tasdiqlash kodi: {otp}. (ID: {ext_id})"
     send_sms_code(sender_card.phone, sms_text)
 
+    if chat_id and not auto_confirm:
+        send_telegram_message(
+            sender_card.phone or "",
+            sms_text,
+            chat_id=int(chat_id),
+        )
+
+    if auto_confirm:
+        sender_card = Card.objects.select_for_update().get(card_number=sender_card.card_number)
+        receiver_card = Card.objects.select_for_update().get(card_number=receiver_card.card_number)
+        if sender_card.balance < amount:
+            raise BusinessError(32702, get_error_message(32702))
+        sender_card.balance -= amount
+        receiver_card.balance += amount
+        sender_card.save(update_fields=["balance"])
+        receiver_card.save(update_fields=["balance"])
+        transfer = Transfer.objects.create(
+            ext_id=ext_id,
+            sender_card_number=sender_card.card_number,
+            receiver_card_number=receiver_card.card_number,
+            sender_card_expiry=parse_expire(sender_card_expiry_raw).strftime("%m/%y"),
+            sender_phone=sender_card.phone,
+            receiver_phone=receiver_card.phone,
+            sending_amount=amount,
+            currency=currency,
+            receiving_amount=calculate_exchange(amount, currency),
+            state=TransferState.CONFIRMED,
+            otp=otp,
+            chat_id=chat_id,
+            confirmed_at=timezone.now(),
+        )
+        message = prepare_message(sender_card.card_number, sender_card.balance)
+        if chat_id:
+            send_telegram_message(
+                sender_card.phone or "",
+                message,
+                chat_id=int(chat_id),
+            )
+        logger.info("Transfer created and auto-confirmed: %s", transfer.ext_id)
+        return {"ext_id": transfer.ext_id, "state": transfer.state, "confirmed": True}
+
     transfer = Transfer.objects.create(
         ext_id=ext_id,
         sender_card_number=sender_card.card_number,
         receiver_card_number=receiver_card.card_number,
-        sender_card_expiry=parse_expire(params["sender_card_expiry"]).strftime("%m/%y"),
+        sender_card_expiry=parse_expire(sender_card_expiry_raw).strftime("%m/%y"),
         sender_phone=sender_card.phone,
         receiver_phone=receiver_card.phone,
         sending_amount=amount,
@@ -137,11 +237,12 @@ def create_transfer(params: dict) -> dict:
         receiving_amount=calculate_exchange(amount, currency),
         state=TransferState.CREATED,
         otp=otp,
+        chat_id=chat_id,
     )
     logger.info("Transfer created: %s", transfer.ext_id)
     return {"ext_id": transfer.ext_id, "state": transfer.state, "otp_sent": True}
 
-
+     
 @transaction.atomic
 def confirm_transfer(params: dict) -> dict:
     try:
@@ -178,7 +279,12 @@ def confirm_transfer(params: dict) -> dict:
     transfer.save(update_fields=["state", "confirmed_at", "updated_at"])
 
     message = prepare_message(sender_card.card_number, sender_card.balance)
-    send_telegram_message(sender_card.phone or "", message)
+    if transfer.chat_id:
+        send_telegram_message(
+            sender_card.phone or "",
+            message,
+            chat_id=int(transfer.chat_id),
+        )
     logger.info("Transfer confirmed: %s", transfer.ext_id)
     return {"ext_id": transfer.ext_id, "state": transfer.state}
 
