@@ -1,0 +1,23 @@
+[
+  {
+    "type": "card_created",
+    "chat_id": 5342739186,
+    "timestamp": "2026-04-27T11:45:55",
+    "card_id": 1,
+    "card_label": "#1 9860 **** **** 3223"
+  },
+  {
+    "type": "card_created",
+    "chat_id": 5342739186,
+    "timestamp": "2026-04-27T11:52:42",
+    "card_id": 2,
+    "card_label": "#2 8600 **** **** 9012"
+  },
+  {
+    "type": "card_created",
+    "chat_id": 5342739186,
+    "timestamp": "2026-04-27T12:02:57",
+    "card_id": 3,
+    "card_label": "#3 9860 **** **** 1098"
+  }
+]

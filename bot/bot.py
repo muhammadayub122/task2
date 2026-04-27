@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import calendar
@@ -16,7 +17,6 @@ from urllib import error, request
 from uuid import UUID
 
 from django.apps import apps
-from apps.utils import validate_card, card_mask, display_card
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -40,6 +40,8 @@ from django.db.models.fields import (
     UUIDField,
 )
 from django.utils.dateparse import parse_date, parse_datetime
+
+from apps.utils import validate_card
 
 logger = logging.getLogger(__name__)
 
@@ -1348,6 +1350,8 @@ class DjangoTelegramBot:
         expire_field = self.card_field_map.get("expire")
         phone_field = self.card_field_map.get("phone")
 
+        from apps.utils import card_mask
+
         if number_field is not None:
             lines.append(f"{number_field.verbose_name}: {card_mask(str(getattr(card, number_field.name, '')))}")
         if balance_field is not None:
@@ -1367,6 +1371,8 @@ class DjangoTelegramBot:
 
     def _card_label(self, card: Model) -> str:
         number_field = self.card_field_map.get("number")
+        from apps.utils import card_mask
+
         if number_field is not None:
             value = getattr(card, number_field.name, None)
             if value:
@@ -1381,6 +1387,8 @@ class DjangoTelegramBot:
         return prefixes or ("8600", "9860")
 
     def _normalize_card_number(self, chat_id: int, label: str, raw_value: str) -> str:
+        from apps.utils import validate_card
+
         digits = re.sub(r"\D", "", raw_value)
         if len(digits) != 16:
             raise ValidationProblem(
@@ -1496,9 +1504,11 @@ class DjangoTelegramBot:
 
         field = field_spec.field
         if field_spec.semantic == "card_number":
+            from apps.utils import card_mask
+
             digits = self._normalize_card_number(chat_id, field_spec.label, raw_value)
             cleaned = self._clean_field_value(chat_id, field, digits)
-            return cleaned, self._mask_card_number(str(cleaned))
+            return cleaned, card_mask(str(cleaned))
 
         if field_spec.semantic == "phone":
             normalized = self._normalize_uz_phone(chat_id, field_spec.label, raw_value)
@@ -2013,8 +2023,7 @@ class DjangoTelegramBot:
         if owner_field is None:
             return self.card_model.objects.none()
         return self.card_model.objects.filter(
-            **{owner_field.name: self._coerce_chat_id(owner_field, chat_id)}
-            **{owner_field.name: self._coerce_chat_id(owner_field, chat_id)}
+              **{owner_field.name: self._coerce_chat_id(owner_field, chat_id)}
         )
 
     def _resolve_filter_model(self) -> type[Model]:

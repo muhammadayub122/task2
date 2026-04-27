@@ -1,14 +1,9 @@
-
-# Create your models here.
-from django.db import models
-from django.contrib.auth.models import AbstractUser
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-
 
 class CardStatus(models.TextChoices):
     ACTIVE = "active", "Active"

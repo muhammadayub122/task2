@@ -38,6 +38,15 @@ from django.core.cache import cache
 OTP_CACHE_TIMEOUT = 300  # 5 minutes
 
 
+@dataclass
+class BusinessError(Exception):
+    code: int
+    message: str
+
+    def __str__(self) -> str:
+        return self.message
+
+
 def send_otp_to_chat(params: dict) -> dict:
     chat_id = str(params.get("chat_id", "")).strip()
     if not chat_id:
@@ -57,15 +66,6 @@ def send_otp_to_chat(params: dict) -> dict:
         }
     logger.info("OTP sent to chat_id %s: %s", chat_id, otp)
     return {"sent": True, "chat_id": chat_id, "otp": otp}
-
-
-@dataclass
-class BusinessError(Exception):
-    code: int
-    message: str
-
-    def __str__(self) -> str:
-        return self.message
 
 
 def get_error_message(code: int, lang: str = "en") -> str:
