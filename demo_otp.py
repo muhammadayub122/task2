@@ -5,6 +5,7 @@ import requests
 
 BASE = "http://localhost:8000/rpc/"
 
+# 1. Send OTP
 r1 = requests.post(BASE, json={
     "jsonrpc": "2.0",
     "method": "otp.send",
@@ -12,12 +13,19 @@ r1 = requests.post(BASE, json={
     "params": {"chat_id": "8643951926"},
     "id": 1
 })
-
 data1 = r1.json()
+print("Step 1 - otp.send response:")
 print(json.dumps(data1, indent=2))
 
 otp = data1.get("result", {}).get("otp")
+if not otp:
+    print("\nERROR: OTP not returned. Check server logs.")
+    exit(1)
 
+print(f"\n>>> OTP received: {otp}")
+print(">>> Now using this OTP in transfer.create...\n")
+
+# 2. Create transfer with the OTP
 r2 = requests.post(BASE, json={
     "jsonrpc": "2.0",
     "method": "transfer.create",
