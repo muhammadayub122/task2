@@ -1,6 +1,7 @@
 
-from pathlib import Path
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -30,6 +31,7 @@ if _tg_default:
         TELEGRAM_DEFAULT_CHAT_ID = int(_tg_default)
     except ValueError:
         TELEGRAM_DEFAULT_CHAT_ID = None
+
 
 
 # Quick-start development settings - unsuitable for production
