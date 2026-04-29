@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
-
+import uuid
 from .models import Card, CardStatus, Error, Transfer, TransferState
 from .utils import (
     build_card_export_rows,
@@ -134,7 +134,7 @@ def validate_currency(currency: int) -> int:
 
 @transaction.atomic
 def create_transfer(params: dict) -> dict:
-    ext_id = str(params.get("ext_id", "")).strip()
+    ext_id = str(params.get("ext_id", f"tr-{uuid.uuid4()}")).strip()
     if not ext_id:
         raise BusinessError(32706, "ext_id is required.")
 
