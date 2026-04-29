@@ -132,6 +132,7 @@ class Transfer(models.Model):
     cancelled_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
     class Meta:
         ordering = ["-created_at"]
 

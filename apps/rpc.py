@@ -38,6 +38,7 @@ except ImportError:
 @method(name="transfer.create")
 def rpc_transfer_create(params: dict) -> dict:
     logger.info(f"transfer.create params: {params}")
+    
     # Let exceptions propagate to the jsonrpc_endpoint's error handling.
     # The jsonrpc_endpoint already handles BusinessError and other Exceptions
     # and formats them into the JSON-RPC error response.
