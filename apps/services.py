@@ -159,6 +159,10 @@ def create_transfer(params: dict) -> dict:
     receiver_card_number_raw = params.get("to_card") or params.get("receiver_card_number")
     if receiver_card_number_raw is None:
         raise BusinessError(32706, "Parameter 'to_card' (receiver card number) is required.")
+
+    if str(sender_card_number_raw).strip() == str(receiver_card_number_raw).strip():
+        raise BusinessError(32706, "Sender and receiver cards must be different.")
+
     receiver_card = get_card_or_raise(receiver_card_number_raw)
 
     sender_card_expiry_raw = params.get("sender_card_expiry")
@@ -255,6 +259,7 @@ def confirm_transfer(params: dict) -> dict:
         raise BusinessError(32711, get_error_message(32711))
     if transfer.created_at + timedelta(minutes=OTP_LIFETIME_MINUTES) < timezone.now():
         raise BusinessError(32710, get_error_message(32710))
+
     otp = str(params["otp"]).strip()
     if transfer.otp != otp:
         transfer.try_count += 1
@@ -264,8 +269,19 @@ def confirm_transfer(params: dict) -> dict:
             raise BusinessError(32711, get_error_message(32711))
         raise BusinessError(32712, f"Incorrect OTP. Attempts left: {left}")
 
-    sender_card = Card.objects.select_for_update().get(card_number=transfer.sender_card_number)
-    receiver_card = Card.objects.select_for_update().get(card_number=transfer.receiver_card_number)
+    # Lock cards in a deterministic order (by card_number) to prevent deadlocks
+    card_numbers = sorted([transfer.sender_card_number, transfer.receiver_card_number])
+    locked_cards = {
+        c.card_number: c 
+        for c in Card.objects.select_for_update().filter(card_number__in=card_numbers)
+    }
+
+    sender_card = locked_cards.get(transfer.sender_card_number)
+    receiver_card = locked_cards.get(transfer.receiver_card_number)
+
+    if not sender_card or not receiver_card:
+        raise BusinessError(32706, "One of the cards involved in the transfer no longer exists.")
+
     if sender_card.balance < transfer.sending_amount:
         raise BusinessError(32702, get_error_message(32702))
 
